@@ -77,6 +77,8 @@ class RAGServerHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
+        if self.path == '/healthz':
+            return self.send_json({"status": "healthy"})
         if self.path == '/api/knowledge-base':
             return self.send_json(rag_engine.get_knowledge_summary())
         # Handle /frontend/ prefixes gracefully if any client sends it
@@ -436,7 +438,7 @@ Rules:
         }
 
 
-PORT = 8000
+PORT = int(os.environ.get("PORT", 8000))
 
 if __name__ == '__main__':
     load_env()

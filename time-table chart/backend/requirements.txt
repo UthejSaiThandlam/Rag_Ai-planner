@@ -1,6 +1,3 @@
-# RAG AI Planner Backend Dependencies
-pypdf>=4.0.0
-python-docx>=1.1.0
-python-dotenv>=1.0.0
-requests>=2.31.0
+pypdf
+python-docx
 
