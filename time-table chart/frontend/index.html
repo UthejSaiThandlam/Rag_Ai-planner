@@ -1,49 +1,455 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EasyLearn AI — Personal RAG Learning System</title>
-    <meta name="description" content="EasyLearn AI: An intelligent personal RAG learning system with vector search, hybrid retrieval, AI-powered roadmap generation, and smart daily planning.">
+    <title>EasyLearn AI — Enterprise RAG & Learning Studio</title>
+    <meta name="description" content="EasyLearn AI: Production-grade RAG learning system with dense hybrid retrieval, JWT multi-tenancy, database persistence, and AI roadmap generator.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css?v=20261013_3">
+    <style>
+        /* Standalone guaranteed styles for login page */
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #070b13 !important;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            color: #f8fafc;
+        }
+        .auth-page-container {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at 50% 30%, #0e172a 0%, #060911 100%);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .auth-page-container.hidden,
+        #view-auth-page.hidden {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            z-index: -999 !important;
+        }
+        #app-root.hidden {
+            display: none !important;
+        }
+        #toast-container {
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            z-index: 1000000 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 10px !important;
+            pointer-events: none !important;
+        }
+        #toast-container .toast {
+            pointer-events: auto !important;
+        }
+        .auth-card-simple {
+            width: 100% !important;
+            max-width: 400px !important;
+            background: #0d1322 !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-radius: 16px !important;
+            padding: 34px 28px !important;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+            box-sizing: border-box !important;
+        }
+        .auth-header-simple {
+            text-align: center !important;
+            margin-bottom: 24px !important;
+        }
+        .auth-simple-logo {
+            width: 48px !important;
+            height: 48px !important;
+            margin: 0 auto 14px !important;
+            border-radius: 12px !important;
+            background: linear-gradient(135deg, rgba(34, 211, 238, 0.16), rgba(59, 130, 246, 0.2)) !important;
+            border: 1px solid rgba(34, 211, 238, 0.35) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            color: #22d3ee !important;
+            box-shadow: 0 0 24px rgba(34, 211, 238, 0.2) !important;
+        }
+        .auth-simple-logo svg {
+            width: 24px !important;
+            height: 24px !important;
+            max-width: 24px !important;
+            max-height: 24px !important;
+            display: block !important;
+        }
+        .auth-title-simple {
+            font-size: 22px !important;
+            font-weight: 700 !important;
+            color: #f8fafc !important;
+            letter-spacing: -0.4px !important;
+            margin: 0 0 6px 0 !important;
+        }
+        .auth-subtitle-simple {
+            font-size: 13px !important;
+            color: #94a3b8 !important;
+            margin: 0 !important;
+        }
+        .auth-tabs-simple {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 4px !important;
+            background: #070b13 !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-radius: 10px !important;
+            padding: 4px !important;
+            margin-bottom: 22px !important;
+            box-sizing: border-box !important;
+        }
+        .auth-tab-btn {
+            background: transparent !important;
+            border: none !important;
+            border-radius: 7px !important;
+            padding: 8px 12px !important;
+            font-family: inherit !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            color: #94a3b8 !important;
+            cursor: pointer !important;
+            transition: all 0.18s ease !important;
+        }
+        .auth-tab-btn:hover {
+            color: #ffffff !important;
+        }
+        .auth-tab-btn.active {
+            background: #1e293b !important;
+            color: #ffffff !important;
+            font-weight: 600 !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+        }
+        .auth-alert {
+            padding: 10px 14px !important;
+            border-radius: 8px !important;
+            font-size: 13px !important;
+            margin-bottom: 18px !important;
+            line-height: 1.45 !important;
+            box-sizing: border-box !important;
+        }
+        .auth-alert.error {
+            background: rgba(239, 68, 68, 0.12) !important;
+            border: 1px solid rgba(239, 68, 68, 0.35) !important;
+            color: #fca5a5 !important;
+        }
+        .auth-alert.success {
+            background: rgba(16, 185, 129, 0.12) !important;
+            border: 1px solid rgba(16, 185, 129, 0.35) !important;
+            color: #6ee7b7 !important;
+        }
+        .form-group-simple {
+            margin-bottom: 18px !important;
+            text-align: left !important;
+        }
+        .form-label-simple {
+            display: block !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            color: #cbd5e1 !important;
+            margin-bottom: 7px !important;
+            letter-spacing: 0.2px !important;
+        }
+        .input-simple {
+            display: block !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            background: #070b13 !important;
+            border: 1px solid #1e293b !important;
+            border-radius: 8px !important;
+            padding: 11px 14px !important;
+            font-family: inherit !important;
+            font-size: 14px !important;
+            color: #f8fafc !important;
+            outline: none !important;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease !important;
+        }
+        .input-simple::placeholder {
+            color: #475569 !important;
+        }
+        .input-simple:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18) !important;
+        }
+        .input-password-wrap {
+            position: relative !important;
+            width: 100% !important;
+            display: flex !important;
+            align-items: center !important;
+            box-sizing: border-box !important;
+        }
+        .input-password-wrap .input-simple {
+            padding-right: 44px !important;
+        }
+        .btn-pwd-eye {
+            position: absolute !important;
+            right: 8px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            background: transparent !important;
+            border: none !important;
+            cursor: pointer !important;
+            color: #64748b !important;
+            padding: 6px !important;
+            border-radius: 6px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .btn-pwd-eye:hover {
+            color: #cbd5e1 !important;
+        }
+        .btn-pwd-eye svg {
+            width: 16px !important;
+            height: 16px !important;
+            display: block !important;
+        }
+        .btn-submit-simple {
+            width: 100% !important;
+            box-sizing: border-box !important;
+            padding: 12px 16px !important;
+            margin-top: 6px !important;
+            background: #2563eb !important;
+            color: #ffffff !important;
+            border: none !important;
+            border-radius: 8px !important;
+            font-family: inherit !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            transition: background 0.18s ease, box-shadow 0.18s ease !important;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.3) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .btn-submit-simple:hover {
+            background: #1d4ed8 !important;
+            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4) !important;
+        }
+        .auth-divider {
+            display: flex !important;
+            align-items: center !important;
+            margin: 18px 0 !important;
+            color: #475569 !important;
+        }
+        .auth-divider::before,
+        .auth-divider::after {
+            content: "" !important;
+            flex: 1 !important;
+            height: 1px !important;
+            background: rgba(255, 255, 255, 0.08) !important;
+        }
+        .auth-divider span {
+            padding: 0 10px !important;
+            color: #64748b !important;
+            text-transform: uppercase !important;
+            font-size: 11px !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.6px !important;
+        }
+        .btn-guest-simple {
+            width: 100% !important;
+            box-sizing: border-box !important;
+            padding: 10px 14px !important;
+            background: transparent !important;
+            color: #94a3b8 !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            border-radius: 8px !important;
+            font-family: inherit !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            cursor: pointer !important;
+            transition: all 0.18s ease !important;
+        }
+        .btn-guest-simple:hover {
+            background: rgba(255, 255, 255, 0.04) !important;
+            color: #f8fafc !important;
+            border-color: rgba(255, 255, 255, 0.2) !important;
+        }
+        .auth-footer-simple {
+            margin-top: 20px !important;
+            text-align: center !important;
+            font-size: 13px !important;
+            color: #64748b !important;
+        }
+        .auth-footer-simple a {
+            color: #38bdf8 !important;
+            text-decoration: none !important;
+            font-weight: 500 !important;
+            margin-left: 4px !important;
+        }
+        .auth-footer-simple a:hover {
+            color: #7dd3fc !important;
+            text-decoration: underline !important;
+        }
+    </style>
 </head>
 <body>
-    <div id="app-root">
+    <!-- TOAST CONTAINER (Fixed overlay outside grid) -->
+    <div id="toast-container"></div>
 
-        <!-- TOAST CONTAINER -->
-        <div id="toast-container"></div>
+    <!-- ─── PLAIN & SIMPLE AUTHENTICATION PAGE (DEFAULT ON OPEN) ─── -->
+    <div id="view-auth-page" class="auth-page-container">
+        <div class="auth-card-simple">
+            <div class="auth-header-simple">
+                <div class="auth-simple-logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:24px;height:24px;display:block;">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                    </svg>
+                </div>
+                <h1 class="auth-title-simple">EasyLearn AI</h1>
+                <p class="auth-subtitle-simple">Sign in to your learning workspace</p>
+            </div>
+
+            <!-- Simple Toggle Tabs -->
+            <div class="auth-tabs-simple">
+                <button type="button" class="auth-tab-btn active" id="auth-page-tab-login" onclick="switchAuthPageTab('login')">
+                    Sign In
+                </button>
+                <button type="button" class="auth-tab-btn" id="auth-page-tab-register" onclick="switchAuthPageTab('register')">
+                    Create Account
+                </button>
+            </div>
+
+            <!-- Error/Info Message Banner -->
+            <div id="auth-page-alert" class="auth-alert" style="display:none;"></div>
+
+            <!-- ── SIGN IN FORM ── -->
+            <form id="auth-page-form-login" onsubmit="handlePageLogin(event)" autocomplete="off">
+                <div class="form-group-simple">
+                    <label class="form-label-simple">Username or Email</label>
+                    <input type="text" id="auth-input-login-ident" class="input-simple" placeholder="Enter username or email" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" value="">
+                </div>
+
+                <div class="form-group-simple">
+                    <label class="form-label-simple">Password</label>
+                    <div class="input-password-wrap">
+                        <input type="password" id="auth-input-login-pwd" class="input-simple" placeholder="Enter password" required autocomplete="new-password" value="">
+                        <button type="button" class="btn-pwd-eye" onclick="togglePwdVisibility('auth-input-login-pwd')" title="Toggle password visibility">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-auth-login-submit" class="btn-submit-simple">
+                    Sign In
+                </button>
+
+                <div class="auth-divider">
+                    <span>or</span>
+                </div>
+
+                <button type="button" class="btn-guest-simple" onclick="handleGuestLogin()">
+                    Continue as Guest
+                </button>
+
+                <div class="auth-footer-simple">
+                    <span>Don't have an account?</span>
+                    <a href="javascript:void(0)" onclick="switchAuthPageTab('register')">Create an account</a>
+                </div>
+            </form>
+
+            <!-- ── CREATE ACCOUNT FORM ── -->
+            <form id="auth-page-form-register" style="display:none;" onsubmit="handlePageRegister(event)" autocomplete="off">
+                <div class="form-group-simple">
+                    <label class="form-label-simple">Username</label>
+                    <input type="text" id="auth-input-reg-user" class="input-simple" placeholder="Choose a username" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" value="">
+                </div>
+
+                <div class="form-group-simple">
+                    <label class="form-label-simple">Email Address</label>
+                    <input type="email" id="auth-input-reg-email" class="input-simple" placeholder="name@domain.com" required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" value="">
+                </div>
+
+                <div class="form-group-simple">
+                    <label class="form-label-simple">Password</label>
+                    <div class="input-password-wrap">
+                        <input type="password" id="auth-input-reg-pwd" class="input-simple" placeholder="Create a password" required autocomplete="new-password" value="">
+                        <button type="button" class="btn-pwd-eye" onclick="togglePwdVisibility('auth-input-reg-pwd')" title="Toggle password visibility">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-auth-reg-submit" class="btn-submit-simple">
+                    Create Account
+                </button>
+
+                <div class="auth-footer-simple">
+                    <span>Already have an account?</span>
+                    <a href="javascript:void(0)" onclick="switchAuthPageTab('login')">Sign In</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="app-root" style="display:none;">
+
+        <!-- ─── MOBILE BACKDROP OVERLAY ─── -->
+        <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleMobileSidebar(false)"></div>
 
         <!-- ─── LEFT SIDEBAR ─── -->
         <aside id="sidebar">
             <div class="sidebar-brand">
                 <div class="brand-icon">
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M12 6v6l4 2"/></svg>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M12 6v6l4 2"/></svg>
                 </div>
                 <div class="brand-text">
                     <span class="brand-name">EasyLearn</span>
-                    <span class="brand-tag">AI</span>
+                    <span class="brand-tag">RAG Studio v2.0</span>
                 </div>
+                <button id="btn-sidebar-collapse" class="btn-sidebar-collapse" onclick="toggleSidebarCollapse()" title="Collapse / Expand Sidebar (Toggle Mini Mode)">◀</button>
+                <button class="btn-sidebar-close-mobile" onclick="toggleMobileSidebar(false)" aria-label="Close sidebar">✕</button>
             </div>
+
+            <!-- User Workspace Profile Card -->
+            <div class="sidebar-user-card" title="Active User Session">
+                <div class="user-avatar" id="sidebar-user-avatar">👤</div>
+                <div class="user-info">
+                    <span class="user-name" id="sidebar-user-name">Guest Workspace</span>
+                    <span class="user-status-pill" id="sidebar-user-role">● Isolated Workspace</span>
+                </div>
+                <button class="btn-logout-sidebar" onclick="handleLogout()" title="Sign Out of Session">🚪</button>
+            </div>
+
 
             <nav class="sidebar-nav">
                 <div class="nav-group">
                     <span class="nav-group-label">WORKSPACE</span>
                     <a id="snav-dashboard" class="snav-item active" onclick="switchTab('dashboard')">
-                        <span class="snav-icon">🏠</span><span>Home</span>
+                        <span class="snav-icon">🏠</span><span>Dashboard</span>
                     </a>
                     <a id="snav-knowledge" class="snav-item" onclick="switchTab('knowledge')">
                         <span class="snav-icon">📁</span><span>Knowledge Base</span>
+                        <span class="snav-badge" id="snav-doc-count">0</span>
                     </a>
                 </div>
 
                 <div class="nav-group">
                     <span class="nav-group-label">RAG ENGINE</span>
                     <a id="snav-chat" class="snav-item" onclick="switchTab('chat')">
-                        <span class="snav-icon">💬</span><span>AI Assistant</span>
-                        <span class="snav-badge rag-active">RAG</span>
+                        <span class="snav-icon">💬</span><span>Document Chat</span>
+                        <span class="snav-badge rag-active">Hybrid</span>
                     </a>
                     <a id="snav-search" class="snav-item" onclick="switchTab('search')">
                         <span class="snav-icon">🔍</span><span>Semantic Search</span>
@@ -53,214 +459,428 @@
                 <div class="nav-group">
                     <span class="nav-group-label">LEARNING</span>
                     <a id="snav-roadmap" class="snav-item" onclick="switchTab('roadmap')">
-                        <span class="snav-icon">🌿</span><span>Roadmap</span>
+                        <span class="snav-icon">🌿</span><span>AI Roadmap</span>
                     </a>
                     <a id="snav-planner" class="snav-item" onclick="switchTab('planner')">
                         <span class="snav-icon">📅</span><span>Daily Planner</span>
                     </a>
                 </div>
+
+                <div class="nav-group">
+                    <span class="nav-group-label">MONITORING</span>
+                    <a id="snav-monitoring" class="snav-item" onclick="switchTab('monitoring')">
+                        <span class="snav-icon">📊</span><span>Observability</span>
+                        <span class="snav-badge live-pulse">Live</span>
+                    </a>
+                </div>
+
+                <div class="nav-group" id="nav-group-admin">
+                    <span class="nav-group-label" style="color:var(--accent-orange);display:flex;align-items:center;gap:4px;">
+                        <span id="nav-group-admin-icon">🛡️</span> <span id="nav-group-admin-title">USER ACTIVITY</span>
+                    </span>
+                    <a id="snav-admin" class="snav-item snav-item-admin" onclick="switchTab('admin')">
+                        <span class="snav-icon">📜</span><span>User Activity</span>
+                        <span class="snav-badge admin-pulse" id="snav-admin-badge">Live</span>
+                    </a>
+                </div>
             </nav>
 
-            <!-- Stats -->
+            <!-- Bottom System Status -->
             <div class="sidebar-footer">
                 <div class="sidebar-stats-grid">
                     <div class="mini-stat">
                         <span class="mini-stat-val" id="sf-docs">0</span>
-                        <span class="mini-stat-label">Docs</span>
+                        <span class="mini-stat-label">Files</span>
                     </div>
                     <div class="mini-stat">
                         <span class="mini-stat-val" id="sf-chunks">0</span>
                         <span class="mini-stat-label">Chunks</span>
                     </div>
                     <div class="mini-stat">
-                        <span class="mini-stat-val" id="sf-goals">0</span>
-                        <span class="mini-stat-label">Goals</span>
+                        <span class="mini-stat-val" id="sf-db-status">SQLite</span>
+                        <span class="mini-stat-label">Storage</span>
                     </div>
                     <div class="mini-stat">
-                        <span class="mini-stat-val" id="sf-progress">0%</span>
-                        <span class="mini-stat-label">Progress</span>
+                        <span class="mini-stat-val" id="sf-auth-state">Active</span>
+                        <span class="mini-stat-label">Isolation</span>
                     </div>
                 </div>
             </div>
         </aside>
 
-        <!-- ─── MAIN CONTENT ─── -->
+        <!-- ─── DRAGGABLE SIDEBAR RESIZER ─── -->
+        <div id="sidebar-resizer" class="sidebar-resizer" title="Drag to adjust sidebar width (Double-click to reset)"></div>
+
+        <!-- ─── MAIN EXPANSIVE WORKSPACE ─── -->
         <main id="main-content">
+
+            <!-- Topbar Global Header -->
+            <header class="topbar-nav">
+                <div class="topbar-left">
+                    <button class="btn-mobile-sidebar-toggle" id="btn-mobile-sidebar-toggle" onclick="toggleMobileSidebar()" aria-label="Toggle navigation menu">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
+                    <span class="topbar-greeting" id="topbar-greeting">Welcome back, Learner</span>
+                    <span class="topbar-badge online">● FastEngine Online</span>
+                    <span class="topbar-badge secure">🔒 Private Scoped</span>
+                </div>
+                <div class="topbar-right">
+                    <button class="btn btn-secondary btn-sm" onclick="toggleTelemetryDrawer()" title="View live telemetry audit log">
+                        <span>📡 Audit Log</span>
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="document.getElementById('dash-file-input').click()">
+                        <span>+ Ingest File</span>
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="handleLogout()" title="Log out of session" style="color:#f87171;border-color:rgba(239,68,68,0.3);">
+                        <span>🚪 Sign Out</span>
+                    </button>
+                </div>
+            </header>
 
             <!-- ━━━━ DASHBOARD ━━━━ -->
             <section id="view-dashboard" class="view-section">
-                <div class="view-header">
+
+                <!-- 1. Hero Banner Card -->
+                <div class="dashboard-hero-card">
+                    <div class="hero-left">
+                        <div class="hero-pill">⚡ NEXT-GEN RAG STUDIO</div>
+                        <h1 class="hero-title">Your Private AI Knowledge Base & Study Copilot</h1>
+                        <p class="hero-subtitle">Dense neural vector embeddings, structure-aware chunking, verifiable document citations, and AI-powered curriculum generation.</p>
+                        <div class="hero-actions">
+                            <button class="btn btn-primary" onclick="switchTab('chat')">
+                                <span>💬 Launch RAG Chat</span>
+                            </button>
+                            <button class="btn btn-secondary" onclick="document.getElementById('dash-file-input').click()">
+                                <span>📥 Upload Document</span>
+                            </button>
+                            <button class="btn btn-secondary" onclick="switchTab('roadmap')">
+                                <span>🌿 Plan Roadmap</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="hero-stats-badges">
+                        <div class="hero-stat-badge">
+                            <span class="hsb-icon">🧠</span>
+                            <div><strong>Dual AI Engine</strong><small>Gemini + Groq Fallback</small></div>
+                        </div>
+                        <div class="hero-stat-badge">
+                            <span class="hsb-icon">⚡</span>
+                            <div><strong>Hybrid Retrieval</strong><small>70% Cosine · 30% BM25</small></div>
+                        </div>
+                        <div class="hero-stat-badge">
+                            <span class="hsb-icon">🛡️</span>
+                            <div><strong>100% Isolated</strong><small>Multi-Tenant Scoped</small></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Metriqual-Inspired 4 KPI Metric Cards -->
+                <div class="kpi-banner-grid">
+                    <div class="kpi-stat-card blue">
+                        <div class="kpi-top">
+                            <span class="kpi-tag">TOTAL SOURCES</span>
+                            <span class="kpi-icon-pill">📚</span>
+                        </div>
+                        <div class="kpi-main-val" id="dash-kpi-docs">0</div>
+                        <div class="kpi-footer-text">
+                            <span class="trend-green">Indexed in SQLite</span>
+                            <span class="link-action" onclick="switchTab('knowledge')">Manage →</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-stat-card cyan">
+                        <div class="kpi-top">
+                            <span class="kpi-tag">VECTOR PASSAGES</span>
+                            <span class="kpi-icon-pill">🧬</span>
+                        </div>
+                        <div class="kpi-main-val" id="dash-kpi-chunks">0</div>
+                        <div class="kpi-footer-text">
+                            <span>256-Dim Dense Space</span>
+                            <span class="link-action" onclick="switchTab('search')">Inspect →</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-stat-card purple">
+                        <div class="kpi-top">
+                            <span class="kpi-tag">RETRIEVAL SPEED</span>
+                            <span class="kpi-icon-pill">⚡</span>
+                        </div>
+                        <div class="kpi-main-val" id="dash-kpi-latency">24 ms</div>
+                        <div class="kpi-footer-text">
+                            <span class="trend-green">Asynchronous Engine</span>
+                            <span class="link-action" onclick="switchTab('monitoring')">Metrics →</span>
+                        </div>
+                    </div>
+
+                    <div class="kpi-stat-card orange">
+                        <div class="kpi-top">
+                            <span class="kpi-tag">ACTIVE AI MODEL</span>
+                            <span class="kpi-icon-pill">🤖</span>
+                        </div>
+                        <div class="kpi-main-val" style="font-size:18px;margin:8px 0;" id="dash-kpi-model">Gemini 2.5</div>
+                        <div class="kpi-footer-text">
+                            <span>Groq Llama 3.3 Backup</span>
+                            <span class="trend-green">Online</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Fillo-Inspired Auto-Manage Section -->
+                <div class="section-heading-bar">
                     <div>
-                        <h1>EasyLearn AI</h1>
-                        <p class="view-desc">Personal RAG Learning System — Upload documents, chat with AI grounded in your knowledge, generate learning roadmaps.</p>
+                        <h2>📁 Auto-Manage Knowledge & Storage</h2>
+                        <p>Smart context-aware organization for textbooks, lecture notes, and study research.</p>
                     </div>
-                    <div class="header-stats">
-                        <div class="h-stat"><span class="h-stat-icon">📚</span><span id="hs-docs">0</span> Sources</div>
-                        <div class="h-stat healthy"><span class="h-stat-icon">✅</span><span id="hs-status">Online</span></div>
-                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="switchTab('knowledge')">View Knowledge Base →</button>
                 </div>
 
-                <!-- Source cards (like Context Ingestion UI) -->
-                <h2 class="section-title">Sources & Ingestion</h2>
-                <div class="source-grid" id="dashboard-source-grid">
-                    <div class="source-card upload-card" onclick="switchTab('knowledge')">
-                        <div class="source-card-icon upload-icon">
-                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <div class="folder-overview-grid">
+                    <div class="folder-card" onclick="switchTab('knowledge')">
+                        <div class="folder-icon-wrap yellow">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M19.5 21a3 3 0 0 0 3-3v-4.5a3 3 0 0 0-3-3h-1.5V9a3 3 0 0 0-3-3h-3.38a3 3 0 0 1-2.12-.88L8.38 4A3 3 0 0 0 6.26 3H4.5A3 3 0 0 0 1.5 6v12a3 3 0 0 0 3 3h15z"/></svg>
                         </div>
-                        <div class="source-card-body">
-                            <h3>Quick Ingest</h3>
-                            <p>Drag & drop files or click to browse<br><small>PDF, TXT, DOCX, MD</small></p>
+                        <div class="folder-title">Study Materials & Notes</div>
+                        <div class="folder-meta" id="dash-folder-docs">0 documents indexed</div>
+                        <span class="folder-badge">PDF, DOCX, TXT</span>
+                    </div>
+
+                    <div class="folder-card" onclick="switchTab('chat')">
+                        <div class="folder-icon-wrap blue">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-10 10c0 1.9.52 3.68 1.43 5.2L2.05 21.2a1 1 0 0 0 1.25 1.25l4-1.38A9.95 9.95 0 0 0 12 22a10 10 0 0 0 10-10A10 10 0 0 0 12 2z"/></svg>
                         </div>
-                        <span class="source-badge badge-upload">Upload</span>
+                        <div class="folder-title">Grounded RAG Assistant</div>
+                        <div class="folder-meta">Cites exact page numbers & chunks</div>
+                        <span class="folder-badge">Interactive Q&A</span>
+                    </div>
+
+                    <div class="folder-card" onclick="switchTab('roadmap')">
+                        <div class="folder-icon-wrap purple">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                        </div>
+                        <div class="folder-title">AI Roadmaps & Curricula</div>
+                        <div class="folder-meta">Structured multi-week study milestones</div>
+                        <span class="folder-badge">AI Timetable</span>
+                    </div>
+
+                    <div class="folder-card" onclick="switchTab('monitoring')">
+                        <div class="folder-icon-wrap green">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3v18h18M7 16l4-4 4 4 6-6"/></svg>
+                        </div>
+                        <div class="folder-title">Metriqual Telemetry</div>
+                        <div class="folder-meta">Real-time latency, cost & audit logging</div>
+                        <span class="folder-badge">Live Metrics</span>
                     </div>
                 </div>
 
-                <!-- Quick Actions -->
-                <h2 class="section-title" style="margin-top:2rem;">Quick Actions</h2>
-                <div class="quick-actions-grid">
-                    <div class="qa-card" onclick="switchTab('chat')">
-                        <span class="qa-icon">💬</span>
-                        <div><strong>RAG Chat</strong><p>Ask questions grounded in your documents</p></div>
+                <!-- 4. Quick Drag-and-Drop Ingestion Zone (Direct on Dashboard!) -->
+                <div class="dash-quick-upload-card" id="dash-dropzone" onclick="document.getElementById('dash-file-input').click()">
+                    <input type="file" id="dash-file-input" accept=".pdf,.txt,.docx,.md" style="display:none;" onchange="uploadDashboardFile(event)">
+                    <div class="dqu-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     </div>
-                    <div class="qa-card" onclick="switchTab('search')">
-                        <span class="qa-icon">🔍</span>
-                        <div><strong>Semantic Search</strong><p>Explore vector similarity across chunks</p></div>
+                    <div class="dqu-text">
+                        <h3>Drop files here for instant vector indexing</h3>
+                        <p>Chunked with sentence awareness, embedded, and saved directly to your private SQLite database.</p>
+                        <div class="dqu-badges">
+                            <span>📄 PDF</span>
+                            <span>📝 DOCX</span>
+                            <span>📋 TXT</span>
+                            <span>📑 Markdown</span>
+                            <span class="limit">Max 15 MB</span>
+                        </div>
                     </div>
-                    <div class="qa-card" onclick="switchTab('roadmap')">
-                        <span class="qa-icon">🌿</span>
-                        <div><strong>AI Roadmap</strong><p>Generate structured learning paths</p></div>
+                    <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();document.getElementById('dash-file-input').click()">Select File</button>
+                </div>
+
+                <!-- 5. Split Section: Recent Documents & Live Telemetry Stream -->
+                <div class="dash-split-grid">
+                    <!-- Left: Recent Documents -->
+                    <div class="card">
+                        <div class="card-header-between">
+                            <h3>📚 Recent Indexed Documents</h3>
+                            <button class="btn btn-secondary btn-sm" onclick="switchTab('knowledge')">Manage All</button>
+                        </div>
+                        <div id="dash-recent-docs" class="dash-list-container">
+                            <div class="empty-state-box">No documents in this workspace yet. Upload a PDF above!</div>
+                        </div>
                     </div>
-                    <div class="qa-card" onclick="switchTab('planner')">
-                        <span class="qa-icon">📅</span>
-                        <div><strong>Planner</strong><p>Daily timeline & focus timer</p></div>
+
+                    <!-- Right: Live Telemetry Audit -->
+                    <div class="card">
+                        <div class="card-header-between">
+                            <h3>⚡ Live Telemetry & Query Stream</h3>
+                            <button class="btn btn-secondary btn-sm" onclick="switchTab('monitoring')">Full Analytics</button>
+                        </div>
+                        <div id="dash-recent-telemetry" class="dash-list-container">
+                            <div class="empty-state-box">System is online. Awaiting search and chat requests.</div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Active Learning Tracks -->
-                <h2 class="section-title" style="margin-top:2rem;">Active Learning Tracks</h2>
-                <div id="courses-slider" class="courses-slider"></div>
             </section>
 
-            <!-- ━━━━ KNOWLEDGE BASE ━━━━ -->
+            <!-- ━━━━ KNOWLEDGE BASE (Fillo Style) ━━━━ -->
             <section id="view-knowledge" class="view-section" style="display:none;">
                 <div class="view-header">
                     <div>
-                        <h1>Knowledge Base</h1>
-                        <p class="view-desc">Upload, chunk, embed, and index documents into the RAG vector store.</p>
+                        <h1>Knowledge Base & Auto-Manage</h1>
+                        <p class="view-desc">Upload, chunk, embed, and manage persistent documents in your private isolated workspace.</p>
                     </div>
                     <div class="header-actions">
-                        <button class="btn btn-primary" onclick="document.getElementById('file-upload-input').click()">
+                        <button class="btn btn-primary" onclick="document.getElementById('kb-file-input').click()">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                            Add Document
+                            Upload File
                         </button>
                     </div>
                 </div>
 
-                <!-- Upload Zone -->
-                <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-upload-input').click()">
-                    <input type="file" id="file-upload-input" accept=".pdf,.txt,.docx,.md" style="display:none;" onchange="uploadDocument()">
-                    <div class="upload-zone-inner">
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--accent-cyan)"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                        <p>Click to upload or drag and drop</p>
-                        <small>PDF, TXT, MD or DOCX (max. 10MB)</small>
+                <div class="fillo-upload-container">
+                    <div class="fillo-dropzone" id="upload-zone" onclick="document.getElementById('kb-file-input').click()">
+                        <input type="file" id="kb-file-input" accept=".pdf,.txt,.docx,.md" style="display:none;" onchange="uploadDocument()">
+                        <div class="fillo-drop-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </div>
+                        <h3>Drag or upload your study files</h3>
+                        <p>AI will automatically chunk and index into persistent dense vector storage</p>
+                        <span class="btn btn-secondary btn-sm" style="margin-top:10px;">Select from computer</span>
+                        <small style="color:var(--text-tertiary);margin-top:6px;display:block;">Supports PDF, DOCX, TXT, Markdown (Max 15MB)</small>
                     </div>
                 </div>
 
-                <!-- Documents Table -->
+                <div class="kb-section-header">
+                    <h3>Your Indexed Documents</h3>
+                    <button class="btn-icon-sm" onclick="loadKnowledgeBase()" title="Refresh list">🔄</button>
+                </div>
                 <div class="docs-table-wrap">
                     <div class="docs-table-header">
-                        <span class="dt-col-name">FILE NAME</span>
-                        <span class="dt-col-status">STATUS</span>
+                        <span class="dt-col-name">DOCUMENT NAME</span>
+                        <span class="dt-col-size">SIZE</span>
                         <span class="dt-col-chunks">CHUNKS</span>
+                        <span class="dt-col-status">STATUS</span>
+                        <span class="dt-col-action">ACTION</span>
                     </div>
                     <div id="kb-docs-list" class="docs-table-body">
-                        <div class="docs-empty">No documents indexed yet. Upload a file to get started.</div>
+                        <div class="docs-empty">No documents uploaded yet. Drop a PDF or document above!</div>
                     </div>
-                </div>
-
-                <!-- Parsing Queue -->
-                <div class="parsing-queue-card" id="parsing-queue" style="display:none;">
-                    <h3>Parsing Queue</h3>
-                    <div id="parsing-queue-body"></div>
                 </div>
             </section>
 
-            <!-- ━━━━ RAG CHAT ━━━━ -->
+            <!-- ━━━━ RAG CHAT (RTA-CERT Style) ━━━━ -->
             <section id="view-chat" class="view-section" style="display:none;">
-                <div class="chat-layout">
-                    <!-- Chat Column -->
-                    <div class="chat-main-col">
+                <div class="rta-chat-layout">
+                    <!-- Left Document / Topic Navigator -->
+                    <div class="rta-doc-sidebar">
+                        <div class="rta-sidebar-head">
+                            <span class="rta-sidebar-title">Active Knowledge</span>
+                            <span class="rta-count-pill" id="chat-doc-count">0 Files</span>
+                        </div>
+                        <div class="rta-doc-list" id="chat-doc-selector-list">
+                            <div class="rta-doc-item active" onclick="selectChatDocFilter(null, this)">
+                                <span>📚 All Documents</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Main Chat Column -->
+                    <div class="rta-chat-main">
                         <div class="chat-header-bar">
                             <div class="chat-header-left">
-                                <div class="chat-avatar">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-                                </div>
+                                <div class="chat-avatar">🤖</div>
                                 <div>
-                                    <strong>AI Assistant</strong>
-                                    <span class="rag-active-dot">● RAG Active</span>
+                                    <strong id="active-chat-doc-title">All Knowledge Documents</strong>
+                                    <span class="rag-active-dot">● Vector Grounded (Hybrid)</span>
                                 </div>
                             </div>
                             <div class="chat-header-right">
-                                <button class="btn-icon" onclick="toggleDebugContext()" title="Toggle retrieval debug">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                                </button>
+                                <button class="btn btn-secondary btn-sm" onclick="clearChatMessages()">Clear Chat</button>
                             </div>
                         </div>
 
-                        <div id="chat-messages" class="chat-messages">
-                            <div class="chat-bubble ai">
-                                <div class="bubble-avatar">🤖</div>
-                                <div class="bubble-content">
-                                    Hello! I'm ready to answer questions about your knowledge base. Upload documents in the Knowledge Base tab, then ask me anything.
+                        <div id="chat-messages" class="rta-messages-area">
+                            <div class="rta-msg ai">
+                                <div class="rta-msg-avatar">🤖</div>
+                                <div class="rta-msg-body">
+                                    <div class="rta-msg-content">
+                                        Hello! I'm your RAG Learning Assistant. Ask any question about your uploaded documents or study roadmaps, and I'll retrieve relevant passages with verified page citations.
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="chat-input-area">
-                            <input type="text" id="chat-input" placeholder="Ask a question about your documents..." onkeypress="if(event.key==='Enter') sendChatMessage()">
+                        <!-- Chat Input Box -->
+                        <div class="rta-input-box">
+                            <input type="text" id="chat-input" placeholder="Ask anything about your documents..." onkeypress="if(event.key==='Enter') sendChatMessage()">
                             <button class="btn-send" onclick="sendChatMessage()">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                             </button>
                         </div>
-                        <div class="chat-disclaimer">AI can make mistakes. Verify important information.</div>
+                        <div class="chat-disclaimer">Defensive grounding enabled: Retrieved sources are cited inline [Document, Page X].</div>
+                    </div>
+
+                    <!-- Right Verification & Checklist Panel -->
+                    <div class="rta-status-panel">
+                        <div class="rta-panel-head">
+                            <span>RAG Verification</span>
+                            <span class="rta-status-tag" id="rag-verification-status">Grounded</span>
+                        </div>
+                        <div class="rta-checklist-body">
+                            <div class="rta-check-item done">
+                                <span class="chk-icon">✓</span>
+                                <div><strong>Multi-Tenant Isolation</strong><p>Filtered to current user_id</p></div>
+                            </div>
+                            <div class="rta-check-item done">
+                                <span class="chk-icon">✓</span>
+                                <div><strong>Dense + BM25 Hybrid</strong><p>70% Cosine, 30% Keyword</p></div>
+                            </div>
+                            <div class="rta-check-item done">
+                                <span class="chk-icon">✓</span>
+                                <div><strong>Anti-Injection Delimiters</strong><p>Isolated &lt;context&gt; tags</p></div>
+                            </div>
+                            <div class="rta-check-item done">
+                                <span class="chk-icon">✓</span>
+                                <div><strong>Persistent SQLite Storage</strong><p>Retains all embeddings</p></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <!-- ━━━━ SEMANTIC SEARCH ━━━━ -->
+            <!-- ━━━━ SEMANTIC SEARCH (Black Holes Query UI Style) ━━━━ -->
             <section id="view-search" class="view-section" style="display:none;">
                 <div class="view-header">
                     <div>
-                        <h1>Semantic Search</h1>
-                        <p class="view-desc">Search across all indexed document chunks using vector similarity, BM25 keyword matching, or hybrid fusion.</p>
+                        <h1>Semantic Retrieval Inspector</h1>
+                        <p class="view-desc">Inspect exact chunk scores, vector cosine similarity, keyword frequency, and passage metadata.</p>
                     </div>
                 </div>
 
                 <div class="search-controls">
                     <div class="search-bar-wrap">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input type="text" id="search-query-input" placeholder="Search for documents..." class="search-input" onkeypress="if(event.key==='Enter') performSemanticSearch()">
-                        <button class="btn btn-primary btn-search" onclick="performSemanticSearch()">Search</button>
+                        <input type="text" id="search-query-input" placeholder="Type a concept, query, or technical phrase..." class="search-input" onkeypress="if(event.key==='Enter') performSemanticSearch()">
+                        <button class="btn btn-primary btn-search" onclick="performSemanticSearch()">Inspect Retrieval</button>
                     </div>
 
                     <div class="search-filters">
                         <div class="filter-group">
-                            <label>Search Mode</label>
+                            <label>Retrieval Mode</label>
                             <div class="filter-tabs">
                                 <button class="filter-tab active" onclick="setSearchMode('hybrid', this)">Hybrid</button>
-                                <button class="filter-tab" onclick="setSearchMode('semantic', this)">Semantic</button>
-                                <button class="filter-tab" onclick="setSearchMode('keyword', this)">Keyword</button>
+                                <button class="filter-tab" onclick="setSearchMode('semantic', this)">Semantic Dense</button>
+                                <button class="filter-tab" onclick="setSearchMode('keyword', this)">Keyword BM25</button>
                             </div>
                         </div>
                         <div class="filter-group">
-                            <label>Top K Results</label>
+                            <label>Top K Candidates</label>
                             <input type="range" id="search-topk" min="1" max="10" value="5" class="range-slider" oninput="document.getElementById('topk-val').textContent=this.value">
                             <span id="topk-val" class="range-val">5</span>
                         </div>
                     </div>
                 </div>
 
-                <div id="search-results-container" class="search-results-grid"></div>
+                <div id="search-results-container" class="search-results-grid">
+                    <div class="docs-empty">Enter a query above to inspect dense vector scores and matching passages.</div>
+                </div>
             </section>
 
             <!-- ━━━━ ROADMAP ━━━━ -->
@@ -268,22 +888,19 @@
                 <div class="view-header">
                     <div>
                         <h1>AI Roadmap Generator</h1>
-                        <p class="view-desc">Generate structured learning paths powered by AI. Create goals, track subtopics, and manage study sessions.</p>
+                        <p class="view-desc">Generate structured learning paths powered by AI. Stored permanently in your database.</p>
                     </div>
                 </div>
 
                 <div class="roadmap-layout">
                     <div class="roadmap-left">
-                        <!-- Goal Creator -->
                         <div class="card">
-                            <div class="card-header">
-                                <h3>🎯 Create Learning Goal</h3>
-                            </div>
+                            <div class="card-header"><h3>🎯 Create Learning Goal</h3></div>
                             <form id="goal-creator-form" onsubmit="handleCreateGoal(event)">
                                 <div class="form-grid-2">
                                     <div class="form-group">
                                         <label>Topic / Subject</label>
-                                        <input type="text" id="goal-query" placeholder="e.g. Machine Learning" class="input-main" required>
+                                        <input type="text" id="goal-query" placeholder="e.g. Distributed Systems" class="input-main" required>
                                     </div>
                                     <div class="form-group">
                                         <label>Level</label>
@@ -306,9 +923,8 @@
                             </form>
                         </div>
 
-                        <!-- Active Goals List -->
                         <div class="card">
-                            <div class="card-header"><h3>📋 Learning Tracks</h3></div>
+                            <div class="card-header"><h3>📋 Active Roadmaps</h3></div>
                             <div id="active-roadmaps-list"></div>
                         </div>
                     </div>
@@ -316,8 +932,7 @@
                     <div class="roadmap-right">
                         <div class="card" style="min-height:400px;">
                             <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
-                                <h3>🌲 Roadmap — <span id="active-roadmap-title-badge" class="accent-text">NO ACTIVE GOAL</span></h3>
-                                <button class="btn btn-secondary btn-sm" onclick="triggerAutoSchedule()">⚡ Auto Schedule</button>
+                                <h3>🌲 Roadmap View — <span id="active-roadmap-title-badge" class="accent-text">NO ACTIVE GOAL</span></h3>
                             </div>
                             <div id="tree-container"></div>
                         </div>
@@ -325,98 +940,409 @@
                 </div>
             </section>
 
-            <!-- ━━━━ PLANNER ━━━━ -->
+            <!-- ━━━━ DAILY PLANNER & TIMETABLE CHART (SCREENSHOT-MATCHED) ━━━━ -->
             <section id="view-planner" class="view-section" style="display:none;">
-                <div class="view-header">
-                    <div>
-                        <h1>Daily Planner</h1>
-                        <p class="view-desc">Manage your day with an AI-powered timeline. Add fixed blocks, study sessions, and use the focus timer.</p>
-                    </div>
-                </div>
-
-                <div class="planner-layout">
-                    <div class="planner-timeline-col">
-                        <div class="card">
-                            <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
-                                <h3>📅 Timeline</h3>
-                                <span id="current-planner-date" class="date-badge"></span>
+                <div class="planner-page-grid">
+                    <!-- ─── LEFT COLUMN: TIMELINE ─── -->
+                    <div class="planner-card-timeline">
+                        <div class="planner-timeline-header">
+                            <div class="timeline-title-group">
+                                <span class="timeline-icon">🗓️</span>
+                                <h2 class="timeline-heading">Timeline</h2>
                             </div>
-                            <div class="planner-timeline-wrapper">
-                                <div class="planner-time-labels" id="planner-time-labels"></div>
-                                <div class="planner-timeline-track" id="planner-timeline-track">
-                                    <div id="planner-current-time-indicator" class="current-time-indicator"></div>
-                                </div>
+                            <div class="timeline-date-pill" id="current-planner-date">
+                                Friday, October 9
+                            </div>
+                        </div>
+
+                        <!-- 24-Hour Vertical Schedule Track -->
+                        <div class="timeline-viewport" id="timeline-viewport">
+                            <div class="timeline-inner-grid" id="timeline-inner-grid">
+                                <!-- Hour labels 00:00 - 23:00 and dividing grid lines generated by JS -->
+                                <div class="timeline-hour-rows" id="timeline-hour-rows"></div>
+                                <!-- Scheduled Task Blocks layer -->
+                                <div class="timeline-blocks-overlay" id="timeline-blocks-overlay"></div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="planner-sidebar-col">
-                        <!-- Timer -->
-                        <div class="card timer-card">
-                            <div class="card-header"><h3>⏱️ Focus Timer</h3></div>
-                            <div class="timer-widget">
-                                <div id="active-timer-task-name" class="timer-task-name">NO ACTIVE TASK</div>
-                                <div id="active-timer-display" class="timer-display">00:00:00</div>
-                                <div class="timer-actions">
-                                    <button id="active-timer-toggle-btn" class="btn btn-primary" onclick="toggleTimer()" disabled>Play</button>
-                                    <button id="active-timer-complete-btn" class="btn btn-secondary" onclick="completeTimerTask()" disabled>Complete</button>
+                    <!-- ─── RIGHT COLUMN: 3 STACKED CARDS ─── -->
+                    <div class="planner-control-stack">
+                        <!-- 1. Focus Timer Card -->
+                        <div class="planner-card-panel focus-card">
+                            <div class="panel-header">
+                                <span class="panel-title"><span class="panel-icon">⏱️</span> Focus Timer</span>
+                            </div>
+                            <div class="focus-body">
+                                <div class="focus-active-badge" id="focus-active-task-name">NO ACTIVE TASK</div>
+                                <div class="focus-clock-display" id="focus-clock-display">00:00:00</div>
+                                <div class="focus-actions-row">
+                                    <button type="button" class="btn-focus-action btn-focus-play" id="btn-focus-play" onclick="handleFocusPlay()">
+                                        Play
+                                    </button>
+                                    <button type="button" class="btn-focus-action btn-focus-complete" id="btn-focus-complete" onclick="handleFocusComplete()">
+                                        Complete
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Add Block -->
-                        <div class="card">
-                            <div class="card-header"><h3>📌 Add Block</h3></div>
-                            <form id="planner-fixed-form" onsubmit="handleAddFixedBlock(event)">
-                                <div class="form-group"><input type="text" id="fb-name" placeholder="Block name..." class="input-main" required></div>
-                                <div class="form-group">
-                                    <select id="fb-category" class="input-main">
-                                        <option value="rest">🛏️ Rest</option><option value="work">💼 Work</option><option value="meals">🍽️ Meals</option>
-                                        <option value="travel">🚗 Travel</option><option value="learning" selected>📖 Learning</option>
-                                        <option value="skill">🛠️ Skills</option><option value="personal">🧘 Personal</option>
+                        <!-- 2. Add Block Card -->
+                        <div class="planner-card-panel add-card">
+                            <div class="panel-header">
+                                <span class="panel-title"><span class="panel-icon">📌</span> Add Block</span>
+                            </div>
+                            <form id="form-planner-add-block" class="add-block-form" onsubmit="handlePlannerAddBlock(event)">
+                                <div class="planner-form-field">
+                                    <input type="text" id="add-block-name" class="planner-text-input" placeholder="Block name..." required autocomplete="off">
+                                </div>
+                                <div class="planner-form-field">
+                                    <select id="add-block-category" class="planner-select-input">
+                                        <option value="📖 Learning">📖 Learning</option>
+                                        <option value="⚡ Practice">⚡ Practice</option>
+                                        <option value="💻 Coding">💻 Coding</option>
+                                        <option value="🧠 Review">🧠 Review</option>
+                                        <option value="📝 Research">📝 Research</option>
+                                        <option value="💡 Problem Solving">💡 Problem Solving</option>
                                     </select>
                                 </div>
-                                <div style="display:flex;gap:0.5rem;">
-                                    <input type="time" id="fb-start" class="input-main" required>
-                                    <input type="time" id="fb-end" class="input-main" required>
+                                <div class="planner-form-row-2col">
+                                    <div class="planner-form-field time-input-wrap">
+                                        <input type="time" id="add-block-start" class="planner-time-input" value="08:00" required>
+                                    </div>
+                                    <div class="planner-form-field time-input-wrap">
+                                        <input type="time" id="add-block-end" class="planner-time-input" value="08:45" required>
+                                    </div>
                                 </div>
-                                <button type="submit" class="btn btn-primary" style="width:100%;margin-top:0.5rem;">Add Block</button>
+                                <button type="submit" class="btn-planner-add-submit" id="btn-planner-add-submit">
+                                    Add Block
+                                </button>
                             </form>
                         </div>
 
-                        <!-- Actions -->
-                        <div class="card">
-                            <div class="card-header"><h3>⚙️ Actions</h3></div>
-                            <div class="planner-actions">
-                                <button class="btn btn-secondary" onclick="triggerAutoSchedule()">⚡ Auto Schedule</button>
-                                <button class="btn btn-danger" onclick="clearSchedule()">🗑️ Clear All</button>
+                        <!-- 3. Actions Card -->
+                        <div class="planner-card-panel actions-card">
+                            <div class="panel-header">
+                                <span class="panel-title"><span class="panel-icon">⚙️</span> Actions</span>
+                            </div>
+                            <div class="actions-buttons-column">
+                                <button type="button" class="btn-planner-action-auto" id="btn-planner-action-auto" onclick="handleAutoSchedule()">
+                                    <span class="action-btn-icon">⚡</span> Auto Schedule
+                                </button>
+                                <button type="button" class="btn-planner-action-clear" id="btn-planner-action-clear" onclick="handleClearAllTasks()">
+                                    <span class="action-btn-icon">🗑️</span> Clear All
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
+            <!-- ━━━━ OBSERVABILITY & METRICS (Metriqual Style) ━━━━ -->
+            <section id="view-monitoring" class="view-section" style="display:none;">
+                <div class="view-header">
+                    <div>
+                        <h1>Metriqual Observability Dashboard</h1>
+                        <p class="view-desc">Live telemetry, latency percentiles, error rates, model distributions, and audit trails.</p>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="loadTelemetry()">🔄 Refresh Metrics</button>
+                </div>
+
+                <!-- 4 KPI Cards (Image 4 Style) -->
+                <div class="metriqual-kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon purple">📈</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Total Requests</span>
+                            <span class="kpi-value" id="kpi-total-reqs">0</span>
+                        </div>
+                        <span class="kpi-trend positive">↑ Live</span>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-icon green">💵</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Estimated Cost</span>
+                            <span class="kpi-value" id="kpi-cost">$0.0000</span>
+                        </div>
+                        <span class="kpi-trend neutral">USD</span>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-icon blue">⏱️</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Avg Retrieval Latency</span>
+                            <span class="kpi-value" id="kpi-latency">0 ms</span>
+                        </div>
+                        <span class="kpi-trend positive">FastAPI</span>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-icon orange">🛡️</div>
+                        <div class="kpi-info">
+                            <span class="kpi-label">Error Rate</span>
+                            <span class="kpi-value" id="kpi-error-rate">0.0%</span>
+                        </div>
+                        <span class="kpi-trend positive">Optimal</span>
+                    </div>
+                </div>
+
+                <!-- Model Distribution & Provider Stats -->
+                <div class="metriqual-stats-grid">
+                    <div class="card">
+                        <div class="card-header"><h3>🤖 Model & Provider Allocation</h3></div>
+                        <div class="provider-bar-container">
+                            <div class="provider-stat-row">
+                                <span>Google Gemini (Flash)</span>
+                                <span id="stat-gemini-count">0 calls</span>
+                            </div>
+                            <div class="progress-bar-bg"><div class="progress-bar-fill blue" id="stat-gemini-bar" style="width:50%"></div></div>
+
+                            <div class="provider-stat-row" style="margin-top:12px;">
+                                <span>Groq (Llama 3.3 70B)</span>
+                                <span id="stat-groq-count">0 calls</span>
+                            </div>
+                            <div class="progress-bar-bg"><div class="progress-bar-fill purple" id="stat-groq-bar" style="width:30%"></div></div>
+
+                            <div class="provider-stat-row" style="margin-top:12px;">
+                                <span>Local Vector Ingestion</span>
+                                <span id="stat-local-count">0 calls</span>
+                            </div>
+                            <div class="progress-bar-bg"><div class="progress-bar-fill green" id="stat-local-bar" style="width:20%"></div></div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header"><h3>📜 Recent System Requests</h3></div>
+                        <div class="telemetry-table-wrap">
+                            <table class="telemetry-table">
+                                <thead>
+                                    <tr>
+                                        <th>TIME</th>
+                                        <th>ENDPOINT</th>
+                                        <th>MODEL</th>
+                                        <th>LATENCY</th>
+                                        <th>STATUS</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="telemetry-table-body">
+                                    <tr><td colspan="5" style="text-align:center;color:var(--text-tertiary);">No requests logged yet.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ━━━━ ADMIN AUDIT & USER ACTIVITY CONSOLE ━━━━ -->
+            <section id="view-admin" class="view-section" style="display:none;">
+                <div class="view-header">
+                    <div>
+                        <h2>🛡️ Admin Audit & User Activity Center</h2>
+                        <p class="view-subtitle">Monitor registered accounts, JWT authentication sessions, and real-time user activity across EasyLearn AI.</p>
+                    </div>
+                    <div class="view-actions">
+                        <span class="admin-badge-pill">👑 Superadmin Mode</span>
+                        <button class="btn btn-secondary" onclick="loadAdminData()"><span class="btn-icon">🔄</span> Refresh Data</button>
+                    </div>
+                </div>
+
+                <!-- Admin KPI Stats Ribbon -->
+                <div class="stats-ribbon" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 24px;">
+                    <div class="stat-card">
+                        <div class="stat-icon purple">👥</div>
+                        <div class="stat-meta">
+                            <span class="stat-label">TOTAL REGISTERED ACCOUNTS</span>
+                            <span class="stat-val" id="admin-stat-total-users">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon cyan">⚡</div>
+                        <div class="stat-meta">
+                            <span class="stat-label">TOTAL JWT LOGINS</span>
+                            <span class="stat-val" id="admin-stat-total-logins">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">🟢</div>
+                        <div class="stat-meta">
+                            <span class="stat-label">UNIQUE ACTIVE USERS</span>
+                            <span class="stat-val" id="admin-stat-active-users">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">👑</div>
+                        <div class="stat-meta">
+                            <span class="stat-label">PRIMARY ADMINISTRATOR</span>
+                            <span class="stat-val" style="font-size:12px;font-family:var(--font-mono);word-break:break-all;" title="uthejsaithandlam@gmail.com">uthejsaithandlam@gmail.com</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Sub-Navigation Tabs -->
+                <div class="admin-nav-tabs">
+                    <button class="admin-subtab active" id="admin-tab-btn-users" onclick="switchAdminTab('users')">
+                        <span>👤 User Accounts Directory</span>
+                        <span class="tab-badge" id="admin-users-badge">0</span>
+                    </button>
+                    <button class="admin-subtab" id="admin-tab-btn-activity" onclick="switchAdminTab('activity')">
+                        <span>📜 Live Login & Auth Logs</span>
+                        <span class="tab-badge live-pulse" id="admin-activity-badge">0</span>
+                    </button>
+                </div>
+
+                <!-- TAB 1: ACCOUNTS DIRECTORY -->
+                <div id="admin-panel-users" class="admin-panel-card">
+                    <div class="admin-table-toolbar">
+                        <div class="search-input-wrap">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" id="admin-user-search" class="input-main" placeholder="Filter by username, email, or role..." oninput="filterAdminUsers()">
+                        </div>
+                        <div class="toolbar-stats" id="admin-user-filter-info">
+                            Showing all registered accounts
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="modern-data-table">
+                            <thead>
+                                <tr>
+                                    <th>USER</th>
+                                    <th>EMAIL</th>
+                                    <th>ROLE</th>
+                                    <th>ACCOUNT TYPE</th>
+                                    <th>REGISTERED ON</th>
+                                    <th>LAST LOGIN</th>
+                                    <th>LOGINS</th>
+                                    <th>DOCUMENTS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-users-table-body">
+                                <tr><td colspan="8" style="text-align:center;padding:2rem;">Loading accounts...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- TAB 2: LIVE LOGIN ACTIVITY AUDIT -->
+                <div id="admin-panel-activity" class="admin-panel-card" style="display:none;">
+                    <div class="admin-table-toolbar">
+                        <div class="toolbar-left">
+                            <span class="status-indicator-live"></span>
+                            <span style="font-size:13px;color:var(--text-secondary);">Real-time JWT authentication and session access logs</span>
+                        </div>
+                        <div class="toolbar-filters">
+                            <select id="admin-activity-filter" class="input-select" onchange="filterAdminActivity()">
+                                <option value="all">All Events</option>
+                                <option value="success">Successful Logins</option>
+                                <option value="failed">Failed Attempts</option>
+                            </select>
+                            <button class="btn btn-secondary btn-sm" onclick="loadAdminActivity()"><span class="btn-icon">⚡</span> Fetch Latest</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="modern-data-table">
+                            <thead>
+                                <tr>
+                                    <th>TIMESTAMP</th>
+                                    <th>USER</th>
+                                    <th>EMAIL</th>
+                                    <th>ROLE</th>
+                                    <th>AUTH METHOD</th>
+                                    <th>STATUS</th>
+                                    <th>CLIENT IP</th>
+                                    <th>DEVICE / USER AGENT</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-activity-table-body">
+                                <tr><td colspan="8" style="text-align:center;padding:2rem;">Loading activity stream...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
         </main>
 
-        <!-- ─── RIGHT PANEL: Activity Log ─── -->
-        <aside id="right-panel">
-            <div class="right-panel-header">
-                <span>Activity Log</span>
-                <button class="btn-icon-sm" onclick="clearTerminalLogs()">Clear</button>
+        <!-- ─── TELEMETRY AUDIT SLIDE-OUT DRAWER ─── -->
+        <aside id="telemetry-drawer" class="telemetry-drawer" style="display:none;">
+            <div class="drawer-header">
+                <div class="drawer-title">
+                    <span>📡 Live Telemetry Stream</span>
+                    <span class="badge-status indexed">Active</span>
+                </div>
+                <div class="drawer-actions">
+                    <button class="btn-icon-sm" onclick="clearTerminalLogs()" title="Clear logs">Clear</button>
+                    <button class="btn-icon-sm" onclick="toggleTelemetryDrawer()" title="Close drawer">✕</button>
+                </div>
             </div>
             <div id="terminal-body" class="terminal-body"></div>
         </aside>
+
     </div>
 
-    <!-- MODAL -->
-    <div id="block-modal" class="modal-overlay" onclick="closeModal(event)">
-        <div class="modal-content">
-            <h3 id="modal-title"></h3>
-            <div id="modal-body"></div>
-            <div id="modal-actions" class="modal-actions"></div>
+    <!-- ─── AUTHENTICATION / USER SWITCHER MODAL ─── -->
+    <div id="auth-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeAuthModal()">
+        <div class="modal-content auth-modal-box">
+            <div class="modal-header">
+                <h3 id="auth-modal-title">🔐 Workspace Authentication</h3>
+                <button class="btn-close" onclick="closeAuthModal()">✕</button>
+            </div>
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="auth-tab-login" onclick="switchAuthTab('login')">Login</button>
+                <button class="auth-tab" id="auth-tab-register" onclick="switchAuthTab('register')">Register</button>
+                <button class="auth-tab" id="auth-tab-guest" onclick="switchAuthTab('guest')">Guest Session</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="auth-form-login" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="login-username" class="input-main" placeholder="e.g. mohammad" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="login-password" class="input-main" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;margin-top:1rem;">Sign In to Workspace</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="auth-form-register" style="display:none;" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="reg-username" class="input-main" placeholder="e.g. user_alpha" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="reg-email" class="input-main" placeholder="user@easylearn.ai" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="reg-password" class="input-main" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;margin-top:1rem;">Create Private Workspace</button>
+            </form>
+
+            <!-- Guest Form -->
+            <div id="auth-form-guest" style="display:none; text-align:center; padding: 1rem 0;">
+                <p style="color:var(--text-secondary);margin-bottom:1rem;">Create a fresh isolated guest workspace without a password.</p>
+                <button type="button" class="btn btn-secondary" onclick="handleGuestLogin()" style="width:100%;">Create New Guest Session</button>
+            </div>
         </div>
     </div>
 
-    <script src="js/app.js"></script>
+    <!-- ─── CITATION SOURCE PREVIEW MODAL ─── -->
+    <div id="citation-modal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeCitationModal()">
+        <div class="modal-content" style="max-width:650px;">
+            <div class="modal-header">
+                <h3 id="citation-modal-title">📖 Source Passage Inspection</h3>
+                <button class="btn-close" onclick="closeCitationModal()">✕</button>
+            </div>
+            <div class="citation-meta-bar" id="citation-modal-meta"></div>
+            <div class="citation-full-text" id="citation-modal-text"></div>
+        </div>
+    </div>
+
+    <script src="js/app.js?v=20261013_3"></script>
 </body>
 </html>

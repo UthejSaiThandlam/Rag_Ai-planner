@@ -62,7 +62,7 @@ def _gemini_request(model, prompt, api_key, expect_json):
         data=json.dumps(data).encode('utf-8'),
         headers={'Content-Type': 'application/json'}
     )
-    with urllib.request.urlopen(req, timeout=45) as response:
+    with urllib.request.urlopen(req, timeout=20) as response:
         res_data = json.loads(response.read().decode('utf-8'))
         candidates = res_data.get('candidates', [])
         if not candidates:
@@ -109,7 +109,7 @@ def call_groq(prompt: str, api_key: str, history=None, expect_json: bool = False
         headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {api_key}'}
     )
     try:
-        with urllib.request.urlopen(req, timeout=45) as response:
+        with urllib.request.urlopen(req, timeout=20) as response:
             res_data = json.loads(response.read().decode('utf-8'))
             return res_data['choices'][0]['message']['content'], None
     except Exception as e:

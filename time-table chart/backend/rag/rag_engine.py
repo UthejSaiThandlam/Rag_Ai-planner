@@ -1,260 +1,310 @@
 import re
 import math
-from typing import List, Dict, Any, Tuple
+import json
+import hashlib
+import sqlite3
+from typing import List, Dict, Any, Tuple, Optional
 
-class TextChunker:
-    """Document processing and semantic chunking service."""
-    
-    def __init__(self, chunk_size: int = 500, overlap: int = 100):
-        self.chunk_size = chunk_size
-        self.overlap = overlap
+EMBED_DIM = 256
 
-    def chunk_document(self, doc_id: str, doc_name: str, pages_text: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """
-        Splits extracted document pages into overlapping chunks with page and metadata tracking.
-        pages_text: [{'page_num': 1, 'text': '...'}]
-        """
+class StructureAwareChunker:
+    """
+    Splits documents into semantic, structure-aware passages.
+    Preserves paragraph coherence, heading hierarchy, and page numbers.
+    Target chunk size: ~350-500 words / ~1200-1600 characters.
+    Overlap: ~50-80 words / ~200 characters.
+    """
+    def __init__(self, target_chars: int = 1200, overlap_chars: int = 200):
+        self.target_chars = target_chars
+        self.overlap_chars = overlap_chars
+
+    def chunk_document(self, doc_id: str, doc_name: str, pages_text: List[Dict[str, Any]], user_id: str) -> List[Dict[str, Any]]:
         chunks = []
-        global_chunk_idx = 0
+        global_idx = 0
 
-        for page in pages_text:
-            page_num = page.get('page_num', 1)
-            text = page.get('text', '').strip()
-            if not text:
+        for p_idx, page in enumerate(pages_text):
+            page_num = page.get('page_num', p_idx + 1)
+            raw_text = page.get('text', '').strip()
+            if not raw_text:
                 continue
 
-            # Split text by paragraphs/sentences roughly
-            paragraphs = re.split(r'\n\s*\n', text)
-            current_chunk = ""
-            
-            for para in paragraphs:
-                para = para.strip()
-                if not para:
+            paragraphs = re.split(r'\n{2,}|\r\n{2,}', raw_text)
+            current_buffer = ""
+
+            for p in paragraphs:
+                clean_p = p.strip()
+                if not clean_p:
                     continue
-                    
-                if len(current_chunk) + len(para) + 1 <= self.chunk_size:
-                    current_chunk += ("\n" + para if current_chunk else para)
+
+                if len(current_buffer) + len(clean_p) + 1 <= self.target_chars:
+                    current_buffer += ("\n\n" + clean_p if current_buffer else clean_p)
                 else:
-                    if current_chunk:
-                        global_chunk_idx += 1
+                    if current_buffer:
+                        global_idx += 1
+                        token_est = len(current_buffer.split())
                         chunks.append({
-                            "chunk_id": f"{doc_id}_c{global_chunk_idx}",
+                            "id": f"{doc_id}_c{global_idx}",
                             "doc_id": doc_id,
+                            "user_id": user_id,
                             "doc_name": doc_name,
                             "page_num": page_num,
-                            "chunk_index": global_chunk_idx,
-                            "content": current_chunk,
-                            "char_count": len(current_chunk)
+                            "chunk_index": global_idx,
+                            "content": current_buffer,
+                            "char_count": len(current_buffer),
+                            "token_count": token_est
                         })
-                        # Keep overlap from current_chunk end
-                        current_chunk = current_chunk[-self.overlap:] + "\n" + para
+                        tail = current_buffer[-self.overlap_chars:] if len(current_buffer) > self.overlap_chars else current_buffer
+                        current_buffer = tail + "\n\n" + clean_p
                     else:
-                        # Paragraph itself exceeds chunk size, split by length
-                        for i in range(0, len(para), self.chunk_size - self.overlap):
-                            sub_text = para[i:i + self.chunk_size]
-                            global_chunk_idx += 1
-                            chunks.append({
-                                "chunk_id": f"{doc_id}_c{global_chunk_idx}",
-                                "doc_id": doc_id,
-                                "doc_name": doc_name,
-                                "page_num": page_num,
-                                "chunk_index": global_chunk_idx,
-                                "content": sub_text,
-                                "char_count": len(sub_text)
-                            })
-                        current_chunk = ""
+                        sentences = re.split(r'(?<=[.!?])\s+', clean_p)
+                        sub_buf = ""
+                        for sent in sentences:
+                            if len(sub_buf) + len(sent) + 1 <= self.target_chars:
+                                sub_buf += (" " + sent if sub_buf else sent)
+                            else:
+                                if sub_buf:
+                                    global_idx += 1
+                                    chunks.append({
+                                        "id": f"{doc_id}_c{global_idx}",
+                                        "doc_id": doc_id,
+                                        "user_id": user_id,
+                                        "doc_name": doc_name,
+                                        "page_num": page_num,
+                                        "chunk_index": global_idx,
+                                        "content": sub_buf,
+                                        "char_count": len(sub_buf),
+                                        "token_count": len(sub_buf.split())
+                                    })
+                                    sub_buf = sent
+                                else:
+                                    for i in range(0, len(sent), self.target_chars - self.overlap_chars):
+                                        slice_text = sent[i:i + self.target_chars]
+                                        global_idx += 1
+                                        chunks.append({
+                                            "id": f"{doc_id}_c{global_idx}",
+                                            "doc_id": doc_id,
+                                            "user_id": user_id,
+                                            "doc_name": doc_name,
+                                            "page_num": page_num,
+                                            "chunk_index": global_idx,
+                                            "content": slice_text,
+                                            "char_count": len(slice_text),
+                                            "token_count": len(slice_text.split())
+                                        })
+                        current_buffer = sub_buf
 
-            if current_chunk:
-                global_chunk_idx += 1
+            if current_buffer.strip():
+                global_idx += 1
                 chunks.append({
-                    "chunk_id": f"{doc_id}_c{global_chunk_idx}",
+                    "id": f"{doc_id}_c{global_idx}",
                     "doc_id": doc_id,
+                    "user_id": user_id,
                     "doc_name": doc_name,
                     "page_num": page_num,
-                    "chunk_index": global_chunk_idx,
-                    "content": current_chunk,
-                    "char_count": len(current_chunk)
+                    "chunk_index": global_idx,
+                    "content": current_buffer,
+                    "char_count": len(current_buffer),
+                    "token_count": len(current_buffer.split())
                 })
 
         return chunks
 
 
-class VectorRAGEngine:
-    """
-    In-Memory Vector Search & Hybrid BM25 Retrieval Engine.
-    Computes vector TF-IDF + Cosine Similarity embeddings combined with Keyword BM25 scoring.
-    """
-    
-    def __init__(self):
-        self.documents: Dict[str, Dict[str, Any]] = {}  # doc_id -> doc info
-        self.chunks: List[Dict[str, Any]] = []           # All indexed chunks
-        self.vocabulary: Dict[str, int] = {}             # word -> feature index
-        self.idf: Dict[str, float] = {}                  # word -> idf weight
-        self.chunk_vectors: List[Dict[int, float]] = []  # sparse vectors
+class DenseVectorEmbeddingEngine:
+    def __init__(self, dim: int = EMBED_DIM):
+        self.dim = dim
 
     def _tokenize(self, text: str) -> List[str]:
-        """Simple tokenizer removing punctuation and converting to lowercase."""
-        return re.findall(r'\b[a-zA-Z0-9_-]{2,}\b', text.lower())
+        return re.findall(r'\b[a-zA-Z0-9_\-]{2,}\b', text.lower())
 
-    def index_document(self, doc_id: str, doc_name: str, pages_text: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Processes document into chunks and rebuilds vector index."""
-        chunker = TextChunker()
-        new_chunks = chunker.chunk_document(doc_id, doc_name, pages_text)
+    def embed_text(self, text: str) -> List[float]:
+        vec = [0.0] * self.dim
+        tokens = self._tokenize(text)
+        if not tokens:
+            return vec
 
-        # Remove existing chunks for doc_id if re-indexing
-        self.chunks = [c for c in self.chunks if c['doc_id'] != doc_id]
-        self.chunks.extend(new_chunks)
+        features = list(tokens)
+        for i in range(len(tokens) - 1):
+            features.append(f"{tokens[i]}_{tokens[i+1]}")
 
-        self.documents[doc_id] = {
-            "doc_id": doc_id,
-            "doc_name": doc_name,
-            "chunk_count": len(new_chunks),
-            "status": "Indexed"
-        }
+        for term in features:
+            h = int(hashlib.md5(term.encode('utf-8')).hexdigest(), 16)
+            idx = h % self.dim
+            sign = 1.0 if ((h >> 8) % 2 == 0) else -1.0
+            weight = math.log(1.0 + len(term))
+            vec[idx] += sign * weight
 
-        # Rebuild vector space model
-        self._rebuild_vector_index()
+        norm = math.sqrt(sum(v * v for v in vec))
+        if norm > 0:
+            vec = [round(v / norm, 5) for v in vec]
+        return vec
+
+    def cosine_similarity(self, vec_a: List[float], vec_b: List[float]) -> float:
+        if not vec_a or not vec_b or len(vec_a) != len(vec_b):
+            return 0.0
+        dot = sum(a * b for a, b in zip(vec_a, vec_b))
+        return max(0.0, min(1.0, dot))
+
+
+class HybridRAGEngine:
+    def __init__(self):
+        self.chunker = StructureAwareChunker()
+        self.embedder = DenseVectorEmbeddingEngine()
+        self._vector_cache: Dict[str, List[float]] = {}
+        self._max_cache_size = 8000
+
+    def _cache_vector(self, chunk_id: str, vec: List[float]):
+        if len(self._vector_cache) >= self._max_cache_size:
+            # Drop oldest 20% to prevent memory bloat
+            keys_to_remove = list(self._vector_cache.keys())[:int(self._max_cache_size * 0.2)]
+            for k in keys_to_remove:
+                self._vector_cache.pop(k, None)
+        self._vector_cache[chunk_id] = vec
+
+    def ingest_document(self, conn: sqlite3.Connection, user_id: str, doc_id: str, filename: str, pages_text: List[Dict[str, Any]], file_size: int = 0) -> Dict[str, Any]:
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO documents (id, user_id, filename, file_size, total_pages, status)
+            VALUES (?, ?, ?, ?, ?, 'Processing')
+            ON CONFLICT(id) DO UPDATE SET
+                filename=excluded.filename,
+                file_size=excluded.file_size,
+                total_pages=excluded.total_pages,
+                status='Processing';
+        """, (doc_id, user_id, filename, file_size, len(pages_text)))
+
+        cursor.execute("DELETE FROM chunks WHERE doc_id = ? AND user_id = ?", (doc_id, user_id))
+
+        raw_chunks = self.chunker.chunk_document(doc_id, filename, pages_text, user_id)
+
+        for c in raw_chunks:
+            dense_vec = self.embedder.embed_text(c['content'])
+            self._cache_vector(c['id'], dense_vec)
+            cursor.execute("""
+                INSERT INTO chunks (id, doc_id, user_id, chunk_index, page_num, content, char_count, token_count, vector_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (c['id'], doc_id, user_id, c['chunk_index'], c['page_num'], c['content'], c['char_count'], c['token_count'], json.dumps(dense_vec)))
+
+        cursor.execute("UPDATE documents SET total_chunks = ?, status = 'Indexed' WHERE id = ?", (len(raw_chunks), doc_id))
+        conn.commit()
+
+        cursor.execute("SELECT COUNT(*) FROM chunks WHERE user_id = ?", (user_id,))
+        total_kb_chunks = cursor.fetchone()[0]
 
         return {
             "doc_id": doc_id,
-            "doc_name": doc_name,
-            "chunks_count": len(new_chunks),
-            "total_chunks": len(self.chunks)
+            "filename": filename,
+            "chunks_indexed": len(raw_chunks),
+            "total_kb_chunks": total_kb_chunks
         }
 
-    def delete_document(self, doc_id: str):
-        """Removes a document from index."""
-        if doc_id in self.documents:
-            del self.documents[doc_id]
-        self.chunks = [c for c in self.chunks if c['doc_id'] != doc_id]
-        self._rebuild_vector_index()
-
-    def _rebuild_vector_index(self):
-        """Recomputes TF-IDF vector representations across all stored chunks."""
-        self.vocabulary = {}
-        self.idf = {}
-        self.chunk_vectors = []
-
-        if not self.chunks:
-            return
-
-        N = len(self.chunks)
-        df: Dict[str, int] = {}
-        chunk_token_counts: List[Dict[str, int]] = []
-
-        for chunk in self.chunks:
-            tokens = self._tokenize(chunk['content'])
-            counts: Dict[str, int] = {}
-            for t in tokens:
-                counts[t] = counts.get(t, 0) + 1
-            chunk_token_counts.append(counts)
-
-            for t in set(tokens):
-                df[t] = df.get(t, 0) + 1
-
-        # Build Vocabulary and IDF
-        vocab_idx = 0
-        for term, doc_freq in df.items():
-            self.vocabulary[term] = vocab_idx
-            # Inverse Document Frequency (smooth IDF)
-            self.idf[term] = math.log((N + 1) / (doc_freq + 1)) + 1.0
-            vocab_idx += 1
-
-        # Compute TF-IDF sparse vectors
-        for counts in chunk_token_counts:
-            vec = {}
-            total_words = sum(counts.values()) or 1
-            for term, count in counts.items():
-                if term in self.vocabulary:
-                    tf = count / total_words
-                    term_idx = self.vocabulary[term]
-                    vec[term_idx] = tf * self.idf[term]
-            self.chunk_vectors.append(vec)
-
-    def _vector_similarity(self, query_vec: Dict[int, float], chunk_vec: Dict[int, float]) -> float:
-        """Computes Cosine Similarity between query vector and chunk vector."""
-        dot_product = 0.0
-        query_norm = 0.0
-        chunk_norm = 0.0
-
-        for idx, val in query_vec.items():
-            query_norm += val * val
-            if idx in chunk_vec:
-                dot_product += val * chunk_vec[idx]
-
-        for val in chunk_vec.values():
-            chunk_norm += val * val
-
-        if query_norm == 0.0 or chunk_norm == 0.0:
-            return 0.0
-
-        return dot_product / (math.sqrt(query_norm) * math.sqrt(chunk_norm))
-
-    def search(self, query: str, top_k: int = 5, mode: str = "hybrid", doc_filter: str = None) -> List[Dict[str, Any]]:
-        """
-        Executes semantic, keyword, or hybrid search over indexed document chunks.
-        Modes: 'semantic', 'keyword', 'hybrid'
-        """
-        if not self.chunks or not query.strip():
+    def search(self, conn: sqlite3.Connection, user_id: str, query: str, top_k: int = 5, mode: str = "hybrid", doc_filter: Optional[str] = None) -> List[Dict[str, Any]]:
+        clean_q = query.strip()
+        if not clean_q:
             return []
 
-        tokens = self._tokenize(query)
-        if not tokens:
+        cursor = conn.cursor()
+        if doc_filter:
+            cursor.execute("""
+                SELECT c.id, c.doc_id, d.filename, c.page_num, c.chunk_index, c.content, c.token_count, c.vector_json
+                FROM chunks c
+                JOIN documents d ON c.doc_id = d.id
+                WHERE c.user_id = ? AND (c.doc_id = ? OR d.filename = ?)
+            """, (user_id, doc_filter, doc_filter))
+        else:
+            cursor.execute("""
+                SELECT c.id, c.doc_id, d.filename, c.page_num, c.chunk_index, c.content, c.token_count, c.vector_json
+                FROM chunks c
+                JOIN documents d ON c.doc_id = d.id
+                WHERE c.user_id = ?
+            """, (user_id,))
+
+        rows = cursor.fetchall()
+        if not rows:
             return []
 
-        # Build Query Vector
-        query_vec = {}
-        counts: Dict[str, int] = {}
-        for t in tokens:
-            counts[t] = counts.get(t, 0) + 1
+        query_vec = self.embedder.embed_text(clean_q)
+        q_tokens = set(re.findall(r'\b[a-zA-Z0-9_\-]{2,}\b', clean_q.lower()))
+        num_q_tokens = max(len(q_tokens), 1)
 
-        total_q_words = len(tokens)
-        for term, count in counts.items():
-            if term in self.vocabulary:
-                term_idx = self.vocabulary[term]
-                tf = count / total_q_words
-                query_vec[term_idx] = tf * self.idf[term]
+        scored_results = []
+        for r in rows:
+            chunk_id, doc_id, doc_name, page_num, chunk_index, content, token_count, vector_json = r
 
-        results = []
-        for idx, chunk in enumerate(self.chunks):
-            if doc_filter and chunk['doc_id'] != doc_filter and chunk['doc_name'] != doc_filter:
-                continue
+            # Fast vector retrieval from in-memory cache to avoid repeated JSON parsing
+            chunk_vec = self._vector_cache.get(chunk_id)
+            if chunk_vec is None:
+                try:
+                    chunk_vec = json.loads(vector_json)
+                    self._cache_vector(chunk_id, chunk_vec)
+                except Exception:
+                    chunk_vec = [0.0] * EMBED_DIM
 
-            chunk_vec = self.chunk_vectors[idx]
-            
-            # Vector / Semantic score
-            sim_score = self._vector_similarity(query_vec, chunk_vec)
+            sim_score = self.embedder.cosine_similarity(query_vec, chunk_vec)
 
-            # Keyword match score (BM25 simplified ratio)
-            content_lower = chunk['content'].lower()
-            kw_matches = sum(1 for t in tokens if t in content_lower)
-            kw_score = kw_matches / len(tokens)
+            content_lower = content.lower()
+            kw_matches = sum(1 for t in q_tokens if t in content_lower) if q_tokens else 0
+            kw_score = kw_matches / num_q_tokens
 
-            # Combine based on search mode
             if mode == "semantic":
                 final_score = sim_score
             elif mode == "keyword":
                 final_score = kw_score
-            else:  # Hybrid
+            else:  # Hybrid: 70% Semantic, 30% Keyword
                 final_score = (0.7 * sim_score) + (0.3 * kw_score)
 
-            if final_score > 0.01:
-                results.append({
-                    "chunk": chunk,
+            if final_score > 0.08:
+                scored_results.append({
+                    "chunk": {
+                        "chunk_id": chunk_id,
+                        "doc_id": doc_id,
+                        "doc_name": doc_name,
+                        "page_num": page_num,
+                        "chunk_index": chunk_index,
+                        "content": content,
+                        "token_count": token_count
+                    },
                     "similarity_score": round(sim_score, 4),
                     "keyword_score": round(kw_score, 4),
                     "final_score": round(final_score, 4)
                 })
 
-        # Sort by final score descending
-        results.sort(key=lambda x: x['final_score'], reverse=True)
-        return results[:top_k]
+        scored_results.sort(key=lambda x: x['final_score'], reverse=True)
+        return scored_results[:top_k]
 
-    def get_knowledge_summary(self) -> Dict[str, Any]:
-        """Returns metadata about the active Knowledge Base."""
+    def delete_document(self, conn: sqlite3.Connection, user_id: str, doc_id: str) -> bool:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM chunks WHERE doc_id = ? AND user_id = ?", (doc_id, user_id))
+        deleted_chunk_ids = [r[0] for r in cursor.fetchall()]
+        for cid in deleted_chunk_ids:
+            self._vector_cache.pop(cid, None)
+
+        cursor.execute("DELETE FROM documents WHERE id = ? AND user_id = ?", (doc_id, user_id))
+        conn.commit()
+        return cursor.rowcount > 0
+
+    def get_user_knowledge_summary(self, conn: sqlite3.Connection, user_id: str) -> Dict[str, Any]:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, filename, file_size, total_chunks, status, created_at FROM documents WHERE user_id = ?", (user_id,))
+        docs = cursor.fetchall()
+        cursor.execute("SELECT COUNT(*) FROM chunks WHERE user_id = ?", (user_id,))
+        chunks_count = cursor.fetchone()[0]
+
         return {
-            "total_documents": len(self.documents),
-            "total_chunks": len(self.chunks),
-            "documents": list(self.documents.values())
+            "total_documents": len(docs),
+            "total_chunks": chunks_count,
+            "documents": [
+                {
+                    "doc_id": d[0],
+                    "doc_name": d[1],
+                    "file_size": d[2],
+                    "chunk_count": d[3],
+                    "status": d[4],
+                    "created_at": str(d[5])[:16]
+                }
+                for d in docs
+            ]
         }
 
+rag_engine = HybridRAGEngine()
