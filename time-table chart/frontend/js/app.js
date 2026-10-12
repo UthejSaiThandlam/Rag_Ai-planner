@@ -8,7 +8,7 @@ const API_BASE = (
     window.location.origin === 'null' || 
     window.location.port === '3000' || 
     window.location.port === '5500'
-) ? 'http://127.0.0.1:8080' : window.location.origin;
+) ? 'http://127.0.0.1:8000' : window.location.origin;
 
 // State management - Session-scoped so opening the site defaults to the login page
 let currentUser = null;
