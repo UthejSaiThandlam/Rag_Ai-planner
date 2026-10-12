@@ -878,15 +878,22 @@ def get_telemetry_logs(user: Dict[str, Any] = Depends(get_current_user), conn: s
 app.mount("/css", StaticFiles(directory=os.path.join(FRONTEND_DIR, "css")), name="css")
 app.mount("/js", StaticFiles(directory=os.path.join(FRONTEND_DIR, "js")), name="js")
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def serve_index():
     return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
-@app.get("/healthz")
+@app.api_route("/healthz", methods=["GET", "HEAD"])
 def health_check():
     return {"status": "healthy", "engine": "FastAPI", "version": "2.0.0"}
 
 if __name__ == "__main__":
     import uvicorn
-    print("\n🚀 [EASYLEARN AI] Starting FastAPI RAG Server on http://127.0.0.1:8000 ...")
-    uvicorn.run("backend.server:app", host="127.0.0.1", port=8000, log_level="info", reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    host = os.environ.get("HOST", "0.0.0.0")
+    print(f"\n🚀 [EASYLEARN AI] Starting FastAPI RAG Server on http://{host}:{port} ...")
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        reload=False
+    )
